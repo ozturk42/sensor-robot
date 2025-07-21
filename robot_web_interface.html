@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🤖 Robot Haritalandırma Kontrol Paneli</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .panel {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            grid-column: 1 / -1;
+            margin-bottom: 20px;
+            font-size: 2em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .status-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .status-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 5px;
+        }
+        
+        .status-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .map-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            height: 500px;
+            overflow: auto;
+        }
+        
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(40, 10px);
+            gap: 1px;
+            margin: 0 auto;
+            background: #222;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        
+        .map-cell {
+            width: 10px;
+            height: 10px;
+            border-radius: 1px;
+        }
+        
+        .cell-unknown { background: #666; }
+        .cell-free { background: #4CAF50; }
+        .cell-occupied { background: #F44336; }
+        .cell-robot { background: #FFD700; border: 2px solid #FFA000; }
+        
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            justify-content: center;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 2px;
+        }
+        
+        .ip-input {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            color: black;
+        }
+        
+        .connection-status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .connected { background: rgba(76, 175, 80, 0.3); }
+        .disconnected { background: rgba(244, 67, 54, 0.3); }
+        
+        .sensor-readings {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 10px;
+            height: 200px;
+            margin: 20px 0;
+        }
+        
+        .sensor {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .sensor-front { grid-column: 2; grid-row: 1; }
+        .sensor-left { grid-column: 1; grid-row: 2; }
+        .sensor-right { grid-column: 2; grid-row: 2; }
+        .sensor-back { grid-column: 2; grid-row: 3; }
+        
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            .controls {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Robot Haritalandırma Kontrol Paneli</h1>
+        
+        <div class="panel">
+            <h2>🎮 Kontrol & Durum</h2>
+            
+            <input type="text" id="robotIP" class="ip-input" placeholder="Robot IP Adresi (örn: 192.168.1.100)" value="192.168.1.100">
+            
+            <div id="connectionStatus" class="connection-status disconnected">
+                🔴 Bağlantı Yok
+            </div>
+            
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">Haritalandırma</div>
+                    <div class="status-value" id="mappingMode">❓</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Pozisyon X</div>
+                    <div class="status-value" id="posX">0.00</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Pozisyon Y</div>
+                    <div class="status-value" id="posY">0.00</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Açı (θ)</div>
+                    <div class="status-value" id="theta">0.00</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Harita Durumu</div>
+                    <div class="status-value" id="mapComplete">❓</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Hedef</div>
+                    <div class="status-value" id="target">Yok</div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button onclick="sendCommand('mapping_on')">🗺️ Haritalandırma Aç</button>
+                <button onclick="sendCommand('mapping_off')">⏸️ Haritalandırma Kapat</button>
+                <button onclick="sendCommand('reset_map')">🔄 Haritayı Sıfırla</button>
+                <button onclick="sendCommand('stop')">⏹️ Dur</button>
+                <button onclick="sendCommand('forward')">⬆️ İleri</button>
+                <button onclick="sendCommand('backward')">⬇️ Geri</button>
+                <button onclick="sendCommand('left')">⬅️ Sol</button>
+                <button onclick="sendCommand('right')">➡️ Sağ</button>
+            </div>
+            
+            <h3>📡 Sensör Okumaları</h3>
+            <div class="sensor-readings">
+                <div class="sensor sensor-front">
+                    <div>Ön</div>
+                    <div id="sensorFront">-- cm</div>
+                </div>
+                <div class="sensor sensor-left">
+                    <div>Sol</div>
+                    <div id="sensorLeft">-- cm</div>
+                </div>
+                <div class="sensor sensor-right">
+                    <div>Sağ</div>
+                    <div id="sensorRight">-- cm</div>
+                </div>
+                <div class="sensor sensor-back">
+                    <div>Arka</div>
+                    <div id="sensorBack">-- cm</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h2>🗺️ Canlı Harita</h2>
+            
+            <div class="map-container">
+                <div id="mapGrid" class="map-grid">
+                    <!-- Harita buraya dinamik olarak yüklenecek -->
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-item">
+                        <div class="legend-color cell-unknown"></div>
+                        <span>Bilinmeyen</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color cell-free"></div>
+                        <span>Boş Alan</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color cell-occupied"></div>
+                        <span>Engel</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color cell-robot"></div>
+                        <span>Robot</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let robotIP = '192.168.1.100';
+        let updateInterval;
+        
+        function updateRobotIP() {
+            robotIP = document.getElementById('robotIP').value;
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+            startUpdates();
+        }
+        
+        document.getElementById('robotIP').addEventListener('change', updateRobotIP);
+        
+        async function sendCommand(command) {
+            try {
+                const response = await fetch(`http://${robotIP}/api/control`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ command: command })
+                });
+                
+                if (response.ok) {
+                    console.log(`Komut gönderildi: ${command}`);
+                } else {
+                    console.error('Komut gönderilemedi');
+                }
+            } catch (error) {
+                console.error('Bağlantı hatası:', error);
+            }
+        }
+        
+        async function updateSensorData() {
+            try {
+                const response = await fetch(`http://${robotIP}/api/sensors`);
+                if (!response.ok) throw new Error('Bağlantı hatası');
+                
+                const data = await response.json();
+                
+                // Bağlantı durumu
+                document.getElementById('connectionStatus').className = 'connection-status connected';
+                document.getElementById('connectionStatus').innerHTML = '🟢 Bağlandı';
+                
+                // Sensör verileri
+                document.getElementById('sensorFront').textContent = `${data.front?.toFixed(1) || '--'} cm`;
+                document.getElementById('sensorBack').textContent = `${data.back?.toFixed(1) || '--'} cm`;
+                document.getElementById('sensorLeft').textContent = `${data.left?.toFixed(1) || '--'} cm`;
+                document.getElementById('sensorRight').textContent = `${data.right?.toFixed(1) || '--'} cm`;
+                
+                // Pozisyon verileri
+                document.getElementById('posX').textContent = (data.position_x?.toFixed(3) || '0.000');
+                document.getElementById('posY').textContent = (data.position_y?.toFixed(3) || '0.000');
+                document.getElementById('theta').textContent = (data.theta?.toFixed(2) || '0.00');
+                
+                // Durum verileri
+                document.getElementById('mappingMode').textContent = data.mapping_mode ? '🟢 Açık' : '🔴 Kapalı';
+                document.getElementById('mapComplete').textContent = data.map_complete ? '✅ Tamamlandı' : '⏳ Devam Ediyor';
+                
+                // Hedef bilgisi
+                if (data.target_x !== undefined && data.target_y !== undefined) {
+                    document.getElementById('target').textContent = `(${data.target_x}, ${data.target_y})`;
+                } else {
+                    document.getElementById('target').textContent = 'Yok';
+                }
+                
+            } catch (error) {
+                document.getElementById('connectionStatus').className = 'connection-status disconnected';
+                document.getElementById('connectionStatus').innerHTML = '🔴 Bağlantı Yok';
+                console.error('Veri güncellenemedi:', error);
+            }
+        }
+        
+        async function updateMap() {
+            try {
+                const response = await fetch(`http://${robotIP}/api/map`);
+                if (!response.ok) throw new Error('Harita yüklenemedi');
+                
+                const data = await response.json();
+                const mapGrid = document.getElementById('mapGrid');
+                mapGrid.innerHTML = '';
+                
+                const robotMapX = Math.floor(data.robot_x / data.cell_size);
+                const robotMapY = Math.floor(data.robot_y / data.cell_size);
+                
+                for (let y = 0; y < data.map_size; y++) {
+                    for (let x = 0; x < data.map_size; x++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'map-cell';
+                        
+                        // Robot pozisyonu kontrol et
+                        if (x === robotMapX && y === robotMapY) {
+                            cell.className += ' cell-robot';
+                        } else {
+                            const value = data.map[y][x];
+                            if (value > 2) {
+                                cell.className += ' cell-occupied';
+                            } else if (value < -2) {
+                                cell.className += ' cell-free';
+                            } else {
+                                cell.className += ' cell-unknown';
+                            }
+                        }
+                        
+                        mapGrid.appendChild(cell);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Harita güncellenemedi:', error);
+            }
+        }
+        
+        function startUpdates() {
+            // İlk güncelleme
+            updateSensorData();
+            updateMap();
+            
+            // Düzenli güncellemeler
+            updateInterval = setInterval(() => {
+                updateSensorData();
+                updateMap();
+            }, 1000); // Her saniye güncelle
+        }
+        
+        // Sayfa yüklendiğinde başlat
+        window.onload = function() {
+            startUpdates();
+        };
+        
+        // Sayfa kapatıldığında temizle
+        window.onbeforeunload = function() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        };
+    </script>
+</body>
+</html> 
